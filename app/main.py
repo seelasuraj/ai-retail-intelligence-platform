@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
+from app.routes import analytics
 from app.routes.upload import router as upload_router
 
 app = FastAPI(
@@ -26,3 +26,8 @@ def root():
     return {
         "message": "AI Retail Intelligence Platform API Running Successfully"
     }
+app.include_router(
+    analytics.router,
+    prefix="/analytics",
+    tags=["Analytics"]
+)
