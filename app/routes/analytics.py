@@ -104,10 +104,18 @@ def summary():
             text("SELECT AVG(price) FROM products")
         ).scalar()
 
+        inventory_value = conn.execute(
+            text("""
+                SELECT SUM(price * stock)
+                FROM products
+            """)
+        ).scalar()
+
     return {
         "total_records": total_records,
         "total_stock": total_stock,
-        "average_price": round(average_price, 2)
+        "average_price": round(average_price, 2),
+        "inventory_value": inventory_value
     }
 @router.get("/inventory-value")
 def inventory_value():
@@ -147,3 +155,63 @@ def top_stock_products():
             })
 
     return products
+@router.get("/top-revenue")
+def top_revenue():
+
+    with engine.connect() as conn:
+        result = conn.execute(
+            text("""
+                SELECT
+                    name,
+                    price * stock AS revenue
+                FROM products
+                ORDER BY revenue DESC
+                LIMIT 5
+            """)
+        )
+
+        products = []
+
+        for row in result:
+            products.append({
+                "name": row.name,
+                "revenue": row.revenue
+            })
+
+    return products
+@router.get("/insights")
+def insights():
+
+    insights = []
+
+    with engine.connect() as conn:
+
+        highest_revenue = conn.execute(
+            text("""
+                SELECT name, price * stock AS revenue
+                FROM products
+                ORDER BY revenue DESC
+                LIMIT 1
+            """)
+        ).fetchone()
+
+        low_stock = conn.execute(
+            text("""
+                SELECT name
+                FROM products
+                WHERE stock < 20
+                LIMIT 1
+            """)
+        ).fetchone()
+
+    if highest_revenue:
+        insights.append(
+            f"{highest_revenue.name} generates the highest revenue."
+        )
+
+    if low_stock:
+        insights.append(
+            f"{low_stock.name} stock is running low."
+        )
+
+    return insights
