@@ -1,21 +1,14 @@
-from fastapi import APIRouter, UploadFile, File, Depends
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
 import pandas as pd
-import os
-
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from app import models
+from io import StringIO
 
-router = APIRouter(
-    prefix="/upload",
-    tags=["Upload"]
-)
-
-UPLOAD_FOLDER = "app/uploads"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+router = APIRouter(prefix="/upload", tags=["Upload"])
 
 
-# Database Dependency
+# DB dependency
 def get_db():
     db = SessionLocal()
     try:
@@ -25,44 +18,39 @@ def get_db():
 
 
 @router.post("/")
-async def upload_csv(
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db)
-):
+async def upload_csv(file: UploadFile = File(...), db: Session = Depends(get_db)):
 
-    # Save uploaded file
-    file_path = os.path.join(
-        UPLOAD_FOLDER,
-        file.filename
-    )
-
-    with open(file_path, "wb") as buffer:
-        buffer.write(await file.read())
-
-    # Read CSV
-    df = pd.read_csv(file_path)
-
-    # Remove old records first
     try:
-        db.query(models.Sale).delete()
-    except:
-        pass
+        # Read file safely
+        contents = await file.read()
+        df = pd.read_csv(StringIO(contents.decode("utf-8")))
 
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"CSV Read Error: {str(e)}")
+
+    # Validate columns (VERY IMPORTANT)
+    required_cols = {"name", "price", "stock"}
+    if not required_cols.issubset(df.columns):
+        raise HTTPException(
+            status_code=400,
+            detail=f"CSV must contain columns: {required_cols}"
+        )
+
+    # Clear old data safely
     try:
         db.query(models.Product).delete()
-    except:
-        pass
-
-    db.commit()
+        db.commit()
+    except Exception as e:
+        print("Delete error:", e)
 
     inserted = 0
     skipped = 0
 
-    # Insert fresh CSV data
+    # Insert rows
     for _, row in df.iterrows():
         try:
             product = models.Product(
-                name=row["name"],
+                name=str(row["name"]),
                 price=float(row["price"]),
                 stock=int(row["stock"])
             )
@@ -81,5 +69,5 @@ async def upload_csv(
         "rows_in_csv": len(df),
         "rows_inserted": inserted,
         "rows_skipped": skipped,
-        "message": "CSV uploaded successfully"
+        "message": "Upload successful 🚀"
     }
