@@ -21,20 +21,32 @@ def get_db():
 async def upload_csv(file: UploadFile = File(...), db: Session = Depends(get_db)):
 
     try:
-        # Read file safely
+        # Read file safely (handles encoding issues)
         contents = await file.read()
-        df = pd.read_csv(StringIO(contents.decode("utf-8")))
+
+        try:
+            decoded = contents.decode("utf-8")
+        except:
+            decoded = contents.decode("latin-1")
+
+        df = pd.read_csv(StringIO(decoded))
 
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"CSV Read Error: {str(e)}")
 
-    # Validate columns (VERY IMPORTANT)
+    # Clean column names (VERY IMPORTANT)
+    df.columns = df.columns.str.strip().str.lower()
+
+    # Validate columns
     required_cols = {"name", "price", "stock"}
-    if not required_cols.issubset(df.columns):
+    if not required_cols.issubset(set(df.columns)):
         raise HTTPException(
             status_code=400,
-            detail=f"CSV must contain columns: {required_cols}"
+            detail=f"CSV must contain columns: {required_cols}. Found: {list(df.columns)}"
         )
+
+    # Remove NaN rows (prevents crashes)
+    df = df.dropna(subset=["name", "price", "stock"])
 
     # Clear old data safely
     try:
@@ -46,11 +58,11 @@ async def upload_csv(file: UploadFile = File(...), db: Session = Depends(get_db)
     inserted = 0
     skipped = 0
 
-    # Insert rows
+    # Insert rows safely
     for _, row in df.iterrows():
         try:
             product = models.Product(
-                name=str(row["name"]),
+                name=str(row["name"]).strip(),
                 price=float(row["price"]),
                 stock=int(row["stock"])
             )
@@ -62,7 +74,10 @@ async def upload_csv(file: UploadFile = File(...), db: Session = Depends(get_db)
             print("Row Error:", e)
             skipped += 1
 
-    db.commit()
+    try:
+        db.commit()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"DB Commit Error: {str(e)}")
 
     return {
         "filename": file.filename,
