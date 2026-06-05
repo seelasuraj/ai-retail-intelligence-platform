@@ -13,16 +13,19 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS Configuration
+# ✅ CORS (FINAL FIX)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5173",
+        "https://ai-retail-intelligence-platform.vercel.app"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Register Routes
+# ✅ Routes
 app.include_router(upload_router)
 
 app.include_router(
@@ -47,11 +50,13 @@ app.include_router(
     tags=["Restock"]
 )
 
+app.include_router(
+    report.router
+)
+
+# ✅ Health check route
 @app.get("/")
 def root():
     return {
         "message": "AI Retail Intelligence Platform API Running Successfully"
     }
-app.include_router(
-    report.router
-)
