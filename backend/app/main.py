@@ -1,6 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.database import engine
+from app import models
+
 from app.routes.upload import router as upload_router
 from app.routes import analytics, recommendations, forecast, restock, report
 
@@ -9,22 +12,24 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# ✅ FINAL CORS CONFIG (FIXED FOR VERCEL + LOCAL + RENDER)
-origins = [
-    "http://localhost:5173",
-    "http://localhost:3000",
-    "https://ai-retail-intelligence-platform.vercel.app"
-]
-
+# ✅ CORS FIX
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=[
+        "http://localhost:5173",
+        "https://ai-retail-intelligence-platform.vercel.app"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Routers
+# ✅ CREATE TABLES ON STARTUP (SAFE WAY)
+@app.on_event("startup")
+def startup():
+    models.Base.metadata.create_all(bind=engine)
+
+# Routes
 app.include_router(upload_router)
 app.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
 app.include_router(recommendations.router, tags=["Recommendations"])
