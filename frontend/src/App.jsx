@@ -14,30 +14,29 @@ const [insights, setInsights] = useState([]);
 const [searchTerm, setSearchTerm] = useState("");
 const [file, setFile] = useState(null);
 
-  const fetchData = () => {
-    axios
-  .get("http://127.0.0.1:8000/analytics/insights")
-  .then((res) => setInsights(res.data))
-  .catch((err) => console.log(err));
-    axios
-  .get("http://127.0.0.1:8000/analytics/top-revenue")
-  .then((res) => setRevenueData(res.data))
-  .catch((err) => console.log(err));
-    axios
-      .get("http://127.0.0.1:8000/analytics/summary")
-      .then((res) => setSummary(res.data))
-      .catch((err) => console.log(err));
+ const BASE_URL = "https://ai-retail-intelligence-platform-r.onrender.com";
 
-    axios
-      .get("http://127.0.0.1:8000/analytics/top-products")
-      .then((res) => setTopProducts(res.data))
-      .catch((err) => console.log(err));
+const fetchData = () => {
+  axios.get(`${BASE_URL}/analytics/insights`)
+    .then((res) => setInsights(res.data))
+    .catch((err) => console.log(err));
 
-    axios
-      .get("http://127.0.0.1:8000/analytics/low-stock")
-      .then((res) => setLowStock(res.data))
-      .catch((err) => console.log(err));
-  };
+  axios.get(`${BASE_URL}/analytics/top-revenue`)
+    .then((res) => setRevenueData(res.data))
+    .catch((err) => console.log(err));
+
+  axios.get(`${BASE_URL}/analytics/summary`)
+    .then((res) => setSummary(res.data))
+    .catch((err) => console.log(err));
+
+  axios.get(`${BASE_URL}/analytics/top-products`)
+    .then((res) => setTopProducts(res.data))
+    .catch((err) => console.log(err));
+
+  axios.get(`${BASE_URL}/analytics/low-stock`)
+    .then((res) => setLowStock(res.data))
+    .catch((err) => console.log(err));
+};
 
   useEffect(() => {
     fetchData();
@@ -54,9 +53,9 @@ const [file, setFile] = useState(null);
 
     try {
       await axios.post(
-        "http://127.0.0.1:8000/upload/",
-        formData
-      );
+  `${BASE_URL}/upload/`,
+  formData
+);
 
       alert("Upload Success");
       fetchData();
@@ -83,10 +82,7 @@ const [file, setFile] = useState(null);
         </h1>
       <button
   onClick={() =>
-    window.open(
-      "http://127.0.0.1:8000/report/pdf",
-      "_blank"
-    )
+    window.open(`${BASE_URL}/report/pdf`, "_blank")
   }
   style={{
     padding: "10px 20px",
